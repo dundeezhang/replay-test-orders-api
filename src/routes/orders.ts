@@ -20,6 +20,7 @@ const CreateOrderSchema = z.object({
     )
     .min(1)
     .max(100),
+  couponCode: z.string().trim().min(3).max(32).optional(),
 });
 
 export function ordersRouter(service: OrderService): Router {

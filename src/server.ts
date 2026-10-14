@@ -10,6 +10,8 @@ import { checkoutRouter } from './routes/checkout.js';
 import type { CheckoutService } from './services/checkoutService.js';
 import type { InventoryService } from './services/inventoryService.js';
 import { ordersRouter } from './routes/orders.js';
+import { couponsRouter } from './routes/coupons.js';
+import type { CouponService } from './services/couponService.js';
 import { productsRouter } from './routes/products.js';
 import type { OrderService } from './services/orderService.js';
 import { webhooksRouter } from './routes/webhooks.js';
@@ -21,6 +23,7 @@ export interface AppDeps {
   apiKeys: readonly ApiKeyEntry[];
   webhooks?: WebhookService;
   products: ProductRepository;
+  coupons?: CouponService;
   orderService: OrderService;
   checkout?: CheckoutService;
   inventory?: InventoryService;
@@ -42,6 +45,9 @@ export function createApp(deps: AppDeps): Express {
   });
 
   const auth = authenticate(deps.apiKeys);
+  if (deps.coupons) {
+    app.use('/v1/coupons', auth, couponsRouter(deps.coupons));
+  }
   app.use('/v1/products', auth, productsRouter(deps.products));
   if (deps.webhooks) {
     app.use('/v1/webhooks', auth, webhooksRouter(deps.webhooks));

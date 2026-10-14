@@ -21,6 +21,8 @@ export interface Order {
   currency: Currency;
   items: OrderItem[];
   subtotalCents: number;
+  discountCents: number;
+  couponCode?: string;
   totalCents: number;
   createdAt: Date;
   updatedAt: Date;

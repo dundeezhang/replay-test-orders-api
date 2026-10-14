@@ -7,15 +7,18 @@ import { canTransition, type Order, type OrderItem, type OrderStatus } from '../
 import type { Principal } from '../models/principal.js';
 import type { OrderListFilter, OrderListResult, OrderRepository } from '../repositories/orderRepository.js';
 import type { ProductRepository } from '../repositories/productRepository.js';
+import type { CouponService } from './couponService.js';
 
 export interface CreateOrderInput {
   customerId: string;
   currency: Currency;
   items: Array<{ productId: string; quantity: number }>;
+  couponCode?: string;
 }
 
 export interface OrderServiceDeps {
   orders: OrderRepository;
+  coupons?: CouponService;
   products: ProductRepository;
   events?: EventBus;
   clock?: Clock;
@@ -23,12 +26,14 @@ export interface OrderServiceDeps {
 
 export class OrderService {
   private readonly orders: OrderRepository;
+  private readonly coupons?: CouponService;
   private readonly products: ProductRepository;
   private readonly events?: EventBus;
   private readonly clock: Clock;
 
   constructor(deps: OrderServiceDeps) {
     this.orders = deps.orders;
+    this.coupons = deps.coupons;
     this.products = deps.products;
     this.events = deps.events;
     this.clock = deps.clock ?? systemClock;
@@ -61,6 +66,14 @@ export class OrderService {
     }
 
     const subtotalCents = sumCents(items.map((item) => item.lineTotalCents));
+    if (input.couponCode && !this.coupons) {
+      throw new ValidationError('Coupons are not enabled');
+    }
+    const applied = input.couponCode
+      ? await this.coupons?.redeem(principal.merchantId, input.couponCode, input.currency, items)
+      : undefined;
+    const discountCents = applied?.discountCents ?? 0;
+
     const now = this.clock.now();
     const order: Order = {
       id: newId('ord'),
@@ -70,7 +83,9 @@ export class OrderService {
       currency: input.currency,
       items,
       subtotalCents,
-      totalCents: subtotalCents,
+      discountCents,
+      couponCode: applied?.code,
+      totalCents: subtotalCents - discountCents,
       createdAt: now,
       updatedAt: now,
     };

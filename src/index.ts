@@ -7,6 +7,8 @@ import { CheckoutService } from './services/checkoutService.js';
 import { InventoryService } from './services/inventoryService.js';
 import { InMemoryOrderRepository } from './repositories/orderRepository.js';
 import { InMemoryProductRepository } from './repositories/productRepository.js';
+import { InMemoryCouponRepository } from './repositories/couponRepository.js';
+import { CouponService } from './services/couponService.js';
 import { seedDemoData } from './seed.js';
 import { createApp } from './server.js';
 import { OrderService } from './services/orderService.js';
@@ -21,9 +23,11 @@ async function main(): Promise<void> {
   const events = new EventBus(logger.child({ component: 'events' }));
 
   const products = new InMemoryProductRepository();
+  const coupons = new CouponService({ repository: new InMemoryCouponRepository() });
   const orders = new InMemoryOrderRepository();
   const orderService = new OrderService({
     orders,
+    coupons,
     products,
     events,
   });
@@ -73,6 +77,7 @@ async function main(): Promise<void> {
     apiKeys: config.apiKeys,
     webhooks,
     products,
+    coupons,
     orderService,
     checkout,
     inventory,
