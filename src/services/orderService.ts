@@ -1,3 +1,4 @@
+import type { DomainEventType, EventBus } from '../events/eventBus.js';
 import { type Clock, systemClock } from '../lib/clock.js';
 import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js';
 import { newId } from '../lib/ids.js';
@@ -16,17 +17,20 @@ export interface CreateOrderInput {
 export interface OrderServiceDeps {
   orders: OrderRepository;
   products: ProductRepository;
+  events?: EventBus;
   clock?: Clock;
 }
 
 export class OrderService {
   private readonly orders: OrderRepository;
   private readonly products: ProductRepository;
+  private readonly events?: EventBus;
   private readonly clock: Clock;
 
   constructor(deps: OrderServiceDeps) {
     this.orders = deps.orders;
     this.products = deps.products;
+    this.events = deps.events;
     this.clock = deps.clock ?? systemClock;
   }
 
@@ -70,7 +74,9 @@ export class OrderService {
       createdAt: now,
       updatedAt: now,
     };
-    return this.orders.create(order);
+    const created = await this.orders.create(order);
+    this.events?.emit('order.created', created.merchantId, { order: created });
+    return created;
   }
 
   async getOrder(principal: Principal, id: string): Promise<Order> {
@@ -111,9 +117,19 @@ export class OrderService {
       paidAt: to === 'paid' ? now : order.paidAt,
       cancelledAt: to === 'cancelled' ? now : order.cancelledAt,
     };
-    return this.orders.save(updated);
+    const saved = await this.orders.save(updated);
+    const eventType = STATUS_EVENTS[to];
+    if (eventType) {
+      this.events?.emit(eventType, saved.merchantId, { order: saved });
+    }
+    return saved;
   }
 }
+
+const STATUS_EVENTS: Partial<Record<OrderStatus, DomainEventType>> = {
+  paid: 'order.paid',
+  cancelled: 'order.cancelled',
+};
 
 function mergeLineItems(
   items: ReadonlyArray<{ productId: string; quantity: number }>,

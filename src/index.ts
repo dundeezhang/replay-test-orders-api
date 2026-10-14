@@ -10,16 +10,22 @@ import { InMemoryProductRepository } from './repositories/productRepository.js';
 import { seedDemoData } from './seed.js';
 import { createApp } from './server.js';
 import { OrderService } from './services/orderService.js';
+import { EventBus } from './events/eventBus.js';
+import { InMemoryWebhookRepository } from './repositories/webhookRepository.js';
+import { DeliveryWorker } from './webhooks/deliveryWorker.js';
+import { WebhookService } from './webhooks/webhookService.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel, { service: 'orders-api' });
+  const events = new EventBus(logger.child({ component: 'events' }));
 
   const products = new InMemoryProductRepository();
   const orders = new InMemoryOrderRepository();
   const orderService = new OrderService({
     orders,
     products,
+    events,
   });
   const inventory = new InventoryService({
     products,
@@ -41,10 +47,31 @@ async function main(): Promise<void> {
     logger.info('seeded demo data', { products: created });
   }
 
+  const webhookRepository = new InMemoryWebhookRepository();
+  const webhooks = new WebhookService({
+    repository: webhookRepository,
+    events,
+    logger: logger.child({ component: 'webhooks' }),
+  });
+  webhooks.subscribeToDomainEvents();
+  new DeliveryWorker({
+    repository: webhookRepository,
+    logger: logger.child({ component: 'webhook-delivery' }),
+    options: {
+      pollIntervalMs: config.webhooks.pollIntervalMs,
+      batchSize: 50,
+      timeoutMs: config.webhooks.timeoutMs,
+      maxAttempts: config.webhooks.maxAttempts,
+      baseDelayMs: 30_000,
+      maxDelayMs: 60 * 60 * 1000,
+    },
+  }).start();
+
   const app = createApp({
     logger,
     rateLimit: { windowMs: config.rateLimitWindowMs, max: config.rateLimitMax },
     apiKeys: config.apiKeys,
+    webhooks,
     products,
     orderService,
     checkout,

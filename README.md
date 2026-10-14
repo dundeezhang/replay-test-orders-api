@@ -29,6 +29,9 @@ Run the test suite with `npm test`.
 | `RESERVATION_TTL_SECONDS` | `900` | How long checkout holds stock for an unpaid order. |
 | `RESERVATION_SWEEP_INTERVAL_MS` | `15000` | How often expired reservations are released. |
 | `SEED_DEMO_DATA` | `false`       | Seed a demo catalog for every configured merchant on startup. |
+| `WEBHOOK_TIMEOUT_MS` | `5000` | Per-attempt timeout for webhook deliveries. |
+| `WEBHOOK_MAX_ATTEMPTS` | `8` | Attempts before a delivery is marked failed. |
+| `WEBHOOK_POLL_INTERVAL_MS` | `1000` | How often the delivery worker looks for due deliveries. |
 
 ## Authentication
 
@@ -100,6 +103,31 @@ Errors use a consistent envelope:
 
 Every response carries an `x-request-id` header; include it when reporting
 problems.
+
+## Webhooks
+
+Admins can register HTTPS endpoints to be notified about order lifecycle
+events (`order.created`, `order.paid`, `order.cancelled`):
+
+- `GET /v1/webhooks` - list endpoints
+- `POST /v1/webhooks` - register an endpoint `{ url, events, description? }`
+- `GET /v1/webhooks/:id` / `PATCH /v1/webhooks/:id` / `DELETE /v1/webhooks/:id`
+- `GET /v1/webhooks/:id/deliveries` - recent delivery attempts
+- `POST /v1/webhooks/:id/deliveries/:deliveryId/retry` - re-queue a failed delivery
+
+The response to `POST /v1/webhooks` contains the endpoint's signing `secret`.
+It is not returned again, so store it securely.
+
+Each delivery is a JSON `POST` with an `x-orders-signature` header of the form
+`t=<unix seconds>,v1=<hex>`, where the hex value is the HMAC-SHA256 of
+`<t>.<raw body>` keyed with the endpoint secret. Reject deliveries whose
+timestamp is more than five minutes old. See `verifySignature` in
+`src/webhooks/signing.ts` for a reference implementation.
+
+Any `2xx` response acknowledges a delivery. Timeouts, network errors, `408`,
+`429` and `5xx` responses are retried with exponential backoff (starting at
+30 seconds, capped at one hour) up to `WEBHOOK_MAX_ATTEMPTS`; other `4xx`
+responses fail the delivery immediately.
 
 ## Development
 

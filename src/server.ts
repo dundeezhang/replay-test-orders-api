@@ -12,11 +12,14 @@ import type { InventoryService } from './services/inventoryService.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
 import type { OrderService } from './services/orderService.js';
+import { webhooksRouter } from './routes/webhooks.js';
+import type { WebhookService } from './webhooks/webhookService.js';
 
 export interface AppDeps {
   logger: Logger;
   rateLimit?: Pick<RateLimitOptions, 'windowMs' | 'max'>;
   apiKeys: readonly ApiKeyEntry[];
+  webhooks?: WebhookService;
   products: ProductRepository;
   orderService: OrderService;
   checkout?: CheckoutService;
@@ -40,6 +43,9 @@ export function createApp(deps: AppDeps): Express {
 
   const auth = authenticate(deps.apiKeys);
   app.use('/v1/products', auth, productsRouter(deps.products));
+  if (deps.webhooks) {
+    app.use('/v1/webhooks', auth, webhooksRouter(deps.webhooks));
+  }
   app.use('/v1/orders', auth, ordersRouter(deps.orderService));
   if (deps.checkout && deps.inventory) {
     app.use('/v1', auth, checkoutRouter(deps.checkout, deps.inventory));
