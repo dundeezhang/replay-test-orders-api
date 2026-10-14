@@ -4,7 +4,7 @@ import { newId } from '../lib/ids.js';
 import { type Currency, lineTotalCents, sumCents } from '../lib/money.js';
 import { canTransition, type Order, type OrderItem, type OrderStatus } from '../models/order.js';
 import type { Principal } from '../models/principal.js';
-import type { OrderRepository } from '../repositories/orderRepository.js';
+import type { OrderListFilter, OrderListResult, OrderRepository } from '../repositories/orderRepository.js';
 import type { ProductRepository } from '../repositories/productRepository.js';
 
 export interface CreateOrderInput {
@@ -83,6 +83,10 @@ export class OrderService {
 
   async listOrders(principal: Principal): Promise<Order[]> {
     return this.orders.list(principal.merchantId);
+  }
+
+  async queryOrders(principal: Principal, filter: OrderListFilter): Promise<OrderListResult> {
+    return this.orders.query(principal.merchantId, filter);
   }
 
   async markPaid(principal: Principal, id: string): Promise<Order> {

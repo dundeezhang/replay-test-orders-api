@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { SUPPORTED_CURRENCIES } from '../lib/money.js';
+import { buildPageInfo } from '../lib/pagination.js';
 import { principalOf, requireRole } from '../middleware/auth.js';
 import type { Order } from '../models/order.js';
 import type { OrderService } from '../services/orderService.js';
 import { asyncHandler } from './asyncHandler.js';
+import { parseOrderListQuery } from './orderListQuery.js';
 
 const CreateOrderSchema = z.object({
   customerId: z.string().trim().min(1).max(64),
@@ -26,8 +28,12 @@ export function ordersRouter(service: OrderService): Router {
   router.get(
     '/',
     asyncHandler(async (req, res) => {
-      const orders = await service.listOrders(principalOf(req));
-      res.json({ data: orders.map(serializeOrder) });
+      const { pagination, filter } = parseOrderListQuery(req.query);
+      const result = await service.queryOrders(principalOf(req), filter);
+      res.json({
+        data: result.orders.map(serializeOrder),
+        pageInfo: buildPageInfo(pagination, result.total),
+      });
     }),
   );
 
