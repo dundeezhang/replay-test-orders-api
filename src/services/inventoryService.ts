@@ -164,13 +164,13 @@ export class InventoryService {
   /** Releases holds that have passed their expiry. Returns how many were processed. */
   async sweepExpired(batchSize = 100): Promise<number> {
     const expired = await this.reservations.listExpired(this.clock.now(), batchSize);
-    expired.forEach(async (reservation) => {
+    for (const reservation of expired) {
       await this.release(reservation.merchantId, reservation.id, 'expired');
       this.logger.info('reservation expired', {
         reservationId: reservation.id,
         orderId: reservation.orderId,
       });
-    });
+    }
     return expired.length;
   }
 

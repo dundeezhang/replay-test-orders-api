@@ -123,6 +123,18 @@ describe('InventoryService', () => {
 
     clock.advance(TTL_MS);
     expect(await inventory.sweepExpired()).toBe(2);
+    expect(await inventory.sweepExpired()).toBe(0);
+  });
+
+  it('marks swept reservations as expired', async () => {
+    const reservation = await inventory.reserve(MERCHANT_A, await orderFor(1));
+    clock.advance(TTL_MS);
+    await inventory.sweepExpired();
+
+    expect(await inventory.getReservation(MERCHANT_A, reservation.id)).toMatchObject({
+      status: 'expired',
+      releaseReason: 'expired',
+    });
   });
 
   it('scopes reservations to the owning merchant', async () => {
