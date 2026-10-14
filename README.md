@@ -55,7 +55,8 @@ All responses are JSON. Successful responses wrap the payload in `data`.
 
 - `GET /v1/orders` - list orders, newest first
 - `GET /v1/orders/:id` - fetch an order
-- `POST /v1/orders` - create a pending order from catalog prices
+- `POST /v1/orders` - create a pending order from catalog prices; pass an
+  optional `couponCode` to apply a discount
 - `POST /v1/orders/:id/pay` - mark an order as paid (admin)
 - `POST /v1/orders/:id/cancel` - cancel a pending or paid order
 
