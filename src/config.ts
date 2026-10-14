@@ -17,6 +17,9 @@ const RawConfigSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  WEBHOOK_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+  WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
+  WEBHOOK_POLL_INTERVAL_MS: z.coerce.number().int().min(100).default(1_000),
 });
 
 export interface AppConfig {
@@ -25,6 +28,11 @@ export interface AppConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   apiKeys: ApiKeyEntry[];
   seedDemoData: boolean;
+  webhooks: {
+    timeoutMs: number;
+    maxAttempts: number;
+    pollIntervalMs: number;
+  };
 }
 
 export function parseApiKeys(raw: string): ApiKeyEntry[] {
@@ -55,5 +63,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     logLevel: raw.LOG_LEVEL,
     apiKeys,
     seedDemoData: raw.SEED_DEMO_DATA,
+    webhooks: {
+      timeoutMs: raw.WEBHOOK_TIMEOUT_MS,
+      maxAttempts: raw.WEBHOOK_MAX_ATTEMPTS,
+      pollIntervalMs: raw.WEBHOOK_POLL_INTERVAL_MS,
+    },
   };
 }
