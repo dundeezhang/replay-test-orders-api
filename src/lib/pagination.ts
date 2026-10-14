@@ -25,7 +25,7 @@ export function pageOffset({ page, pageSize }: Pagination): number {
 }
 
 export function buildPageInfo({ page, pageSize }: Pagination, totalItems: number): PageInfo {
-  const totalPages = Math.floor(totalItems / pageSize);
+  const totalPages = Math.ceil(totalItems / pageSize);
   return {
     page,
     pageSize,

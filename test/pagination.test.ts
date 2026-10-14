@@ -23,6 +23,17 @@ describe('pagination helpers', () => {
       hasPreviousPage: true,
     });
   });
+
+  it('counts a trailing partial page', () => {
+    expect(buildPageInfo({ page: 4, pageSize: 25 }, 101)).toMatchObject({
+      totalPages: 5,
+      hasNextPage: true,
+    });
+    expect(buildPageInfo({ page: 1, pageSize: 25 }, 0)).toMatchObject({
+      totalPages: 0,
+      hasNextPage: false,
+    });
+  });
 });
 
 describe('parseOrderListQuery', () => {
