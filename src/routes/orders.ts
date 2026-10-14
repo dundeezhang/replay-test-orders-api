@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { SUPPORTED_CURRENCIES } from '../lib/money.js';
 import { buildPageInfo } from '../lib/pagination.js';
 import { principalOf, requireRole } from '../middleware/auth.js';
+import { idempotency, type IdempotencyOptions } from '../middleware/idempotency.js';
 import type { Order } from '../models/order.js';
 import type { OrderService } from '../services/orderService.js';
 import { asyncHandler } from './asyncHandler.js';
@@ -23,8 +24,9 @@ const CreateOrderSchema = z.object({
   couponCode: z.string().trim().min(3).max(32).optional(),
 });
 
-export function ordersRouter(service: OrderService): Router {
+export function ordersRouter(service: OrderService, options: { idempotency?: IdempotencyOptions } = {}): Router {
   const router = Router();
+  const idempotent = idempotency(options.idempotency);
 
   router.get(
     '/',
@@ -48,6 +50,7 @@ export function ordersRouter(service: OrderService): Router {
 
   router.post(
     '/',
+    idempotent,
     asyncHandler(async (req, res) => {
       const input = CreateOrderSchema.parse(req.body);
       const order = await service.createOrder(principalOf(req), input);
