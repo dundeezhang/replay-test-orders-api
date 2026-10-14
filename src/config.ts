@@ -13,6 +13,8 @@ const RawConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   API_KEYS: z.string().default(''),
+  RESERVATION_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(900),
+  RESERVATION_SWEEP_INTERVAL_MS: z.coerce.number().int().min(1000).default(15_000),
   SEED_DEMO_DATA: z
     .enum(['true', 'false'])
     .default('false')
@@ -24,6 +26,9 @@ export interface AppConfig {
   nodeEnv: 'development' | 'test' | 'production';
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   apiKeys: ApiKeyEntry[];
+  /** How long checkout holds stock before an unpaid reservation expires. */
+  reservationTtl: number;
+  reservationSweepIntervalMs: number;
   seedDemoData: boolean;
 }
 
@@ -54,6 +59,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     nodeEnv: raw.NODE_ENV,
     logLevel: raw.LOG_LEVEL,
     apiKeys,
+    reservationTtl: raw.RESERVATION_TTL_SECONDS,
+    reservationSweepIntervalMs: raw.RESERVATION_SWEEP_INTERVAL_MS,
     seedDemoData: raw.SEED_DEMO_DATA,
   };
 }
