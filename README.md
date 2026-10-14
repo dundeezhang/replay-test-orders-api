@@ -53,7 +53,15 @@ All responses are JSON. Successful responses wrap the payload in `data`.
 
 ### Orders
 
-- `GET /v1/orders` - list orders, newest first
+- `GET /v1/orders` - list orders, newest first. Supports:
+  - `page` (default `1`) and `pageSize` (default `25`, max `100`)
+  - `status` - one or more comma-separated statuses, e.g. `status=pending,paid`
+  - `customerId` - only orders for this customer
+  - `createdFrom` / `createdTo` - inclusive date range, `YYYY-MM-DD`
+  - `sort` - `createdAt`, `-createdAt` (default), `totalCents` or `-totalCents`
+
+  The response includes a `pageInfo` object with `totalItems`, `totalPages`,
+  `hasNextPage` and `hasPreviousPage`.
 - `GET /v1/orders/:id` - fetch an order
 - `POST /v1/orders` - create a pending order from catalog prices
 - `POST /v1/orders/:id/pay` - mark an order as paid (admin)
