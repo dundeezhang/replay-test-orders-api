@@ -53,6 +53,12 @@ describe('webhook routes', () => {
       .set(bearer(TEST_KEYS.adminA))
       .send({ url: 'not a url', events: ['order.shipped'] });
     expect(res.status).toBe(400);
+
+    const insecure = await request(app)
+      .post('/v1/webhooks')
+      .set(bearer(TEST_KEYS.adminA))
+      .send({ url: 'http://hooks.example.com/orders', events: ['order.paid'] });
+    expect(insecure.status).toBe(400);
   });
 
   it('updates and deletes endpoints', async () => {

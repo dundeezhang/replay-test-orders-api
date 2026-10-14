@@ -6,8 +6,15 @@ import type { WebhookDelivery, WebhookEndpoint } from '../models/webhook.js';
 import type { WebhookService } from '../webhooks/webhookService.js';
 import { asyncHandler } from './asyncHandler.js';
 
+const webhookUrl = z
+  .string()
+  .trim()
+  .url()
+  .max(2048)
+  .refine((value) => new URL(value).protocol === 'https:', 'Webhook URLs must use https');
+
 const EndpointFields = z.object({
-  url: z.string().trim().url().max(2048),
+  url: webhookUrl,
   description: z.string().trim().max(200).optional(),
   events: z.array(z.enum(DOMAIN_EVENT_TYPES)).min(1),
 });
