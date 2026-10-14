@@ -26,6 +26,8 @@ Run the test suite with `npm test`.
 | `NODE_ENV`       | `development` | `development`, `test` or `production`.                        |
 | `LOG_LEVEL`      | `info`        | Minimum log level written to stdout.                          |
 | `API_KEYS`       | (empty)       | Comma-separated `merchantId:role:key` entries. Required in production. |
+| `RESERVATION_TTL_SECONDS` | `900` | How long checkout holds stock for an unpaid order. |
+| `RESERVATION_SWEEP_INTERVAL_MS` | `15000` | How often expired reservations are released. |
 | `SEED_DEMO_DATA` | `false`       | Seed a demo catalog for every configured merchant on startup. |
 
 ## Authentication
@@ -70,6 +72,23 @@ All responses are JSON. Successful responses wrap the payload in `data`.
 All money values are integer cents in the order's currency. Prices are always
 taken from the catalog at the time the order is created; clients cannot submit
 their own prices.
+
+### Checkout and inventory
+
+- `POST /v1/orders/:id/checkout` - reserve stock, charge `paymentMethodToken`,
+  then commit the stock and mark the order paid
+- `GET /v1/inventory/:productId` - on-hand, reserved and available quantity
+- `GET /v1/reservations/:id` - fetch a reservation
+
+Checkout places a reservation on every line of the order before charging. A
+declined or failed payment releases the reservation immediately; abandoned
+reservations are released by a background sweeper once they pass
+`RESERVATION_TTL_SECONDS`. Payment failures return `402 payment_declined` or
+`503 payment_unavailable`; a stock shortfall returns `409` with the affected
+SKUs in `details.shortages`.
+
+In development the fake payment gateway accepts any token except
+`pm_card_declined`, `pm_insufficient_funds` and `pm_gateway_timeout`.
 
 ## Errors
 

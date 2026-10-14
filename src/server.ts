@@ -5,6 +5,9 @@ import { authenticate } from './middleware/auth.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestContext.js';
 import type { ProductRepository } from './repositories/productRepository.js';
+import { checkoutRouter } from './routes/checkout.js';
+import type { CheckoutService } from './services/checkoutService.js';
+import type { InventoryService } from './services/inventoryService.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
 import type { OrderService } from './services/orderService.js';
@@ -14,6 +17,8 @@ export interface AppDeps {
   apiKeys: readonly ApiKeyEntry[];
   products: ProductRepository;
   orderService: OrderService;
+  checkout?: CheckoutService;
+  inventory?: InventoryService;
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -31,6 +36,9 @@ export function createApp(deps: AppDeps): Express {
   const auth = authenticate(deps.apiKeys);
   app.use('/v1/products', auth, productsRouter(deps.products));
   app.use('/v1/orders', auth, ordersRouter(deps.orderService));
+  if (deps.checkout && deps.inventory) {
+    app.use('/v1', auth, checkoutRouter(deps.checkout, deps.inventory));
+  }
 
   app.use(notFound);
   app.use(errorHandler(deps.logger));

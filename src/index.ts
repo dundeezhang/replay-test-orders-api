@@ -1,5 +1,10 @@
 import { loadConfig } from './config.js';
 import { createLogger } from './lib/logger.js';
+import { ReservationSweeper } from './jobs/reservationSweeper.js';
+import { FakePaymentGateway } from './payments/fakePaymentGateway.js';
+import { InMemoryReservationRepository } from './repositories/reservationRepository.js';
+import { CheckoutService } from './services/checkoutService.js';
+import { InventoryService } from './services/inventoryService.js';
 import { InMemoryOrderRepository } from './repositories/orderRepository.js';
 import { InMemoryProductRepository } from './repositories/productRepository.js';
 import { seedDemoData } from './seed.js';
@@ -16,6 +21,20 @@ async function main(): Promise<void> {
     orders,
     products,
   });
+  const inventory = new InventoryService({
+    products,
+    reservations: new InMemoryReservationRepository(),
+    logger: logger.child({ component: 'inventory' }),
+    reservationTtlMs: config.reservationTtl,
+  });
+  const checkout = new CheckoutService({
+    orders: orderService,
+    inventory,
+    // TODO: replace with the payments-service client once it exposes charges.
+    payments: new FakePaymentGateway(),
+    logger: logger.child({ component: 'checkout' }),
+  });
+  new ReservationSweeper(inventory, logger, config.reservationSweepIntervalMs).start();
 
   if (config.seedDemoData) {
     const created = await seedDemoData(products, config.apiKeys);
@@ -27,6 +46,8 @@ async function main(): Promise<void> {
     apiKeys: config.apiKeys,
     products,
     orderService,
+    checkout,
+    inventory,
   });
 
   const server = app.listen(config.port, () => {
