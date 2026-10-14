@@ -24,6 +24,7 @@ async function main(): Promise<void> {
 
   const app = createApp({
     logger,
+    rateLimit: { windowMs: config.rateLimitWindowMs, max: config.rateLimitMax },
     apiKeys: config.apiKeys,
     products,
     orderService,
